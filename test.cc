@@ -26,7 +26,10 @@ int main()
 	int xres = loadi( 0, 1 );
 	int yres = loadi( 0, 4 );
 	int start_fb = GetFrameBuffer();
-	float t;
+	float inv_width = loadf(0, 2);
+	float inv_height = loadf(0, 5);
+	int num_of_samples = 20;
+	float t, x_off, y_off;
 	
 	PointLight light = loadLightFromMemory(loadi(0, 12));
 
@@ -46,15 +49,24 @@ int main()
 	for(int pix = atomicinc(0); pix < xres*yres; pix = atomicinc(0)){
 		int i = pix / xres;
 		int j = pix % xres;
-
 		float x = (float)(2.0f * (j - xres/2.0f + 0.5f)/xres);
 		float y = (float)(2.0f * (i - yres/2.0f + 0.5f)/yres);
 
-		camera.make_ray(ray, x, y);
-		HitRecord hit_record;
-		bvh.intersect(hit_record, ray);
+		for (int i = 0; i < num_of_samples; i++) {
+			x_off = (trax_rand() - .5f) * 2.f;
+			y_off = (trax_rand() - .5f) * 2.f;
+			x_off *= inv_width;
+			y_off *= inv_height;
+			x += x_off;
+			y += y_off;
 
-		result = shade.lambertian(bvh, hit_record, ray, light, ambient_light);
+			camera.make_ray(ray, x, y);
+			HitRecord hit_record;
+			bvh.intersect(hit_record, ray);
+
+			result = result.add(shade.lambertian(bvh, hit_record, ray, light, ambient_light));
+		}
+		result = result.times(1.f/num_of_samples);
 		image.set(i, j, result);
 	}
 	trax_cleanup();
